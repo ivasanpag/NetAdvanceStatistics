@@ -8,6 +8,6 @@ x64/
 NetAdvanceStatistics.vcxproj.opensdf
 NetAdvanceStatistics.vcxproj.exp
 NetAdvanceStatistics.vcxproj.lib
-NetAdvanceStatistics.vcxproj
+NetAdvanceStatistics.vcxproj.vcxproj.user
 *.aps
 *.zip
