@@ -27,7 +27,7 @@
 #include <winsock2.h>
 #include <tchar.h>
 #include <psapi.h>
-
+#include <tlhelp32.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <windows.h>
@@ -216,8 +216,19 @@ int ShowUDPConnections(DWORD port, DWORD portSup, const CHAR* processNameToSearc
                 if (strcmp(processNameToSearch, processName) != 0) continue;
             }
 
-            printf("UDP   |     %s:%d    |    %d     | %s\n ", 
-                    szLocalAddr, ntohs((u_short)pUdpTable->table[i].dwLocalPort), ntohs((u_short)pUdpTable->table[i].dwOwningPid), processName);
+
+
+           
+       
+            printf(" UDP %8s ", "");
+            printf("%s:%d", szLocalAddr, ntohs((u_short)pUdpTable->table[i].dwLocalPort));
+
+            size_t tInt = std::to_string(ntohs((u_short)pUdpTable->table[i].dwLocalPort)).length() + strlen(szLocalAddr) + 1;
+            printf("%*s", (30 - tInt), "");
+
+            printf("%i [ %s ]", pUdpTable->table[i].dwOwningPid, processName);
+            printf("%5s\n", "");
+
             free(processName);
             
 
@@ -283,7 +294,7 @@ int ShowTCPConnections(DWORD port, DWORD portSup, const CHAR* processNameToSearc
     dwRetVal = GetExtendedTcpTable(pTcpTable, &dwSize, bOrder, ulAf, tableClass, 0);
     if (dwRetVal == NO_ERROR) {
        
-        printf(" Proto |  State      |    Local Addr:Local Port   |       Remote Addr: Remote Port  |   PID    | Process Name\n");
+        printf(" Proto |  State      |    Local Addr:Local Port   |       Remote Addr: Remote Port  |   PID  [ Process Name ]\n");
         for (int i = 0; i < (int)pTcpTable->dwNumEntries; i++) {
             
             if (!isValidPort(port, portSup, pTcpTable->table[i].dwLocalPort)
@@ -334,8 +345,24 @@ int ShowTCPConnections(DWORD port, DWORD portSup, const CHAR* processNameToSearc
             }
 
             if (includeConnect) {
-                printf("TCP   |  %s      |    %s:%d    |  %s:%d   |   %d     | %s\n ", state,szLocalAddr, ntohs((u_short)pTcpTable->table[i].dwLocalPort), 
-                    szRemoteAddr, ntohs((u_short)pTcpTable->table[i].dwRemotePort), ntohs((u_short)pTcpTable->table[i].dwOwningPid), processName);
+                int n = (17 - strlen(state));
+                printf(" TCP %5s %s ", "", state);
+                printf("%*s", n, "");
+                
+                size_t tInt = std::to_string(ntohs((u_short)pTcpTable->table[i].dwLocalPort)).length() + strlen(szLocalAddr) + 1;
+                printf("%s:%d",szLocalAddr, ntohs((u_short)pTcpTable->table[i].dwLocalPort));
+                n = (30 - tInt);
+                printf("%*s", n, "");
+
+                tInt = std::to_string(ntohs((u_short)pTcpTable->table[i].dwRemotePort)).length() + strlen(szRemoteAddr) + 1;
+                printf("%s:%d", szRemoteAddr, ntohs((u_short)pTcpTable->table[i].dwRemotePort));
+                n = (30 - tInt);
+                printf("%*s", n, "");
+
+                printf("%i [ %s ]", pTcpTable->table[i].dwOwningPid, processName);
+                printf("%5s\n", "");
+
+             
                 free(processName);
             }
 
@@ -470,14 +497,23 @@ int GetProcessByPid(DWORD pid, CHAR** processName) {
     TCHAR lpFileName[MAX_PATH] = L"Unknown";
     HMODULE hMod;
     DWORD cbNeeded;
-
+    //u_short pid = ntohs((u_short)u_pid);
+    
     HANDLE hdl = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+   
+
     if (hdl == NULL) {
+       
+        // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess
+        // If the specified process is the System Process (0x00000000), the function fails and the last error code is ERROR_INVALID_PARAMETER. 
+        // If the specified process is the Idle process or one of the CSRSS processes, this function fails and the last error code is ERROR_ACCESS_DENIED 
+        // because their access restrictions prevent user-level code from opening them.
+        wcscpy(lpFileName, enumAllProcesses(pid));
 
         *processName = (CHAR*)malloc(wcslen(lpFileName) + 1);
-
         int ret = wcstombs(*processName, lpFileName, wcslen(lpFileName) + 1);
         *(*processName + ret) = '\0';
+
     }
     else {
         if (EnumProcessModules(hdl, &hMod, sizeof(hMod), &cbNeeded))
@@ -520,4 +556,24 @@ BOOL isValidPort(DWORD& port, DWORD& portSup, DWORD& currentPortD) {
 	}
 
 
+}
+
+
+WCHAR* enumAllProcesses(DWORD pid) {
+
+    HANDLE hndl = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS | TH32CS_SNAPMODULE, 0);
+    if (hndl)
+    {
+        PROCESSENTRY32  process = { sizeof(PROCESSENTRY32) };
+        Process32First(hndl, &process);
+        do
+        {
+            if (process.th32ProcessID == pid) {
+                CloseHandle(hndl);
+                return process.szExeFile;
+            }
+        } while (Process32Next(hndl, &process));
+
+        CloseHandle(hndl);
+    }
 }

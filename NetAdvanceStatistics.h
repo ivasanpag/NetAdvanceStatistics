@@ -15,3 +15,5 @@ int ShowTCPConnections(const CHAR* processNameToSearch);
 int ShowTCPConnections(DWORD port = 0, DWORD portSup = 0, const CHAR* processNameToSearch = nullptr);
 int ShowTCPStatistics();
 BOOL isValidPort(DWORD& port, DWORD& portSup, DWORD& currentPort);
+
+WCHAR* enumAllProcesses(DWORD pid);
