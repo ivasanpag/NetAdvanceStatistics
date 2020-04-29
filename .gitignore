@@ -1,0 +1,13 @@
+*.sdf
+*.sln
+*.suo
+x64/Debug
+x64/Release
+x64/
+.vs/
+NetAdvanceStatistics.vcxproj.opensdf
+NetAdvanceStatistics.vcxproj.exp
+NetAdvanceStatistics.vcxproj.lib
+NetAdvanceStatistics.vcxproj
+*.aps
+*.zip
